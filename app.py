@@ -1,5 +1,6 @@
 from flask import Flask, request
 import requests, json, time
+import os
 
 app = Flask(__name__)
 
@@ -18,7 +19,7 @@ def webhook():
     replytoken = req["originalDetectIntentRequest"]["payload"]["data"][
         "replyToken"
     ]  # 取得 LINE replyToken
-    token = "你的 Access Token"
+    token = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
     # 雷達回波圖網址，後方加上時間戳記，避免緩存
     img = f"https://cwbopendata.s3.ap-northeast-1.amazonaws.com/MSC/O-A0058-003.png?{time.time_ns()}"
     # 如果收到的 intent 是 radar
