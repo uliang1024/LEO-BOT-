@@ -16,5 +16,5 @@ def webhook():
     print(reText)
     return {"fulfillmentText": f"{reText} ( webhook )", "source": "webhookdata"}
 
-
-app.run()
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
