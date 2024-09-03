@@ -1,7 +1,21 @@
-from flask import request, jsonify
+from flask import request
 from app import app
-import requests, json, time
 import os
+import importlib
+import pkgutil
+
+# 用于存储意图与处理函数的映射
+intent_handlers = {}
+
+
+def intent_handler(intent_name):
+    """自定义装饰器用于注册 intent 处理函数"""
+
+    def decorator(func):
+        intent_handlers[intent_name] = func
+        return func
+
+    return decorator
 
 
 @app.route("/")
@@ -19,33 +33,24 @@ def webhook():
     ]  # 取得 LINE replyToken
     token = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 
-    img = f"https://cwbopendata.s3.ap-northeast-1.amazonaws.com/MSC/O-A0058-003.png?{time.time_ns()}"
+    # 使用字典来查找对应的处理函数
+    handler = intent_handlers.get(intent)
 
-    if intent == "radar(氣象)":
-        send_line_message(token, replytoken, img)
-        return {"source": "webhookdata"}
+    if handler:
+        return handler(req, token, replytoken)  # 调用对应的处理函数
     else:
+        # 处理没有匹配到的意图
         return {"fulfillmentText": f"{reText} ( webhook )"}
 
 
-def send_line_message(token, replytoken, img_url):
-    """发送图片消息到 LINE"""
-    headers = {
-        "Authorization": "Bearer " + token,
-        "Content-Type": "application/json",
-    }
-    body = {
-        "replyToken": replytoken,
-        "messages": [
-            {"type": "image", "originalContentUrl": img_url, "previewImageUrl": img_url}
-        ],
-    }
+def load_intent_modules():
+    """动态加载所有意图处理模块"""
+    import app.intents
 
-    response = requests.post(
-        "https://api.line.me/v2/bot/message/reply",
-        headers=headers,
-        data=json.dumps(body).encode("utf-8"),
-    )
+    package = app.intents
+    for _, module_name, _ in pkgutil.iter_modules(package.__path__):
+        importlib.import_module(f"{package.__name__}.{module_name}")
 
-    if response.status_code != 200:
-        app.logger.error(f"Failed to send message: {response.text}")
+
+# 加载所有意图模块
+load_intent_modules()
